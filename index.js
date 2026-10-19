@@ -27,6 +27,8 @@ app.use(
       // "http://localhost:5174",
       "http://localhost:5173",
       "http://localhost:3000",
+      "https://sales-billing-frontend.vercel.app",
+      "https://billing.saviengineering.com",
       "https://billings.cloudedata.com",
     ],
     credentials: true,
