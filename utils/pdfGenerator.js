@@ -177,17 +177,21 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
   const isPaid = !isProforma && bill.status === "approved";
 
   const baseAmount = parseFloat(bill.amount) || 0;
-  const gstType = bill.gstType === "CGST_SGST" ? "CGST_SGST" : "IGST";
+  const gstType = ["IGST", "CGST_SGST", "NO_GST"].includes(bill.gstType)
+    ? bill.gstType
+    : "IGST";
   const isSplitGst = gstType === "CGST_SGST";
+  const isNoGst = gstType === "NO_GST";
   const cgstAmount = isSplitGst
     ? parseFloat(((baseAmount * 9) / 100).toFixed(2))
     : 0;
   const sgstAmount = isSplitGst
     ? parseFloat(((baseAmount * 9) / 100).toFixed(2))
     : 0;
-  const igstAmount = !isSplitGst
-    ? parseFloat(((baseAmount * GST_RATE) / 100).toFixed(2))
-    : 0;
+  const igstAmount =
+    gstType === "IGST"
+      ? parseFloat(((baseAmount * GST_RATE) / 100).toFixed(2))
+      : 0;
   const gstAmount = isSplitGst ? cgstAmount + sgstAmount : igstAmount;
   const totalAmount = parseFloat((baseAmount + gstAmount).toFixed(2));
   const hsnCode = SERVICE_HSN[bill.service] || "998315";
@@ -627,7 +631,7 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
       </div>
       <div style="margin-bottom:6px;">
         <div class="label-sm">Renewal Date</div>
-        <div class="value-md">${new Date(bill.renewalDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>
+        <div class="value-md">${bill.renewalDate ? new Date(bill.renewalDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</div>
       </div>
       <div>
         <div class="label-sm">Service</div>
@@ -676,7 +680,7 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
         <td style="border-right:1px solid #aaa;padding:5px 6px;">
           <div style="font-weight:700;font-size:11px;">${item.description || ""}</div>
         </td>
-        <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">${GST_RATE}%</td>
+        <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">${isNoGst ? 0 : GST_RATE}%</td>
         <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">${String(qty).padStart(2, "0")} Nos.</td>
         <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:right;font-size:11px;">${formatINR(rate)}</td>
         <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">Nos.</td>
@@ -689,9 +693,9 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
         <td style="border-left:1px solid #aaa;border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">1</td>
         <td style="border-right:1px solid #aaa;padding:5px 6px;">
           <div style="font-weight:700;font-size:11px;">${serviceName}</div>
-          <div style="font-size:10px;color:#555;">From ${new Date(bill.billingDate).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })} to ${new Date(bill.renewalDate).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })}</div>
+          <div style="font-size:10px;color:#555;">From ${new Date(bill.billingDate).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })}${bill.renewalDate ? ` to ${new Date(bill.renewalDate).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })}` : ""}</div>
         </td>
-        <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">${GST_RATE}%</td>
+        <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">${isNoGst ? 0 : GST_RATE}%</td>
         <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:11px;">
           ${(() => {
             const qSpec = (bill.specifications || []).find(
@@ -774,7 +778,9 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
         <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:center;font-size:10.5px;">%</td>
         <td style="border-right:1px solid #aaa;padding:5px 6px;text-align:right;font-size:10.5px;">${formatINR(sgstAmount)}</td>
       </tr>`
-          : `
+          : isNoGst
+            ? ""
+            : `
       <tr>
         <td style="border-left:1px solid #aaa;border-right:1px solid #aaa;border-top:1px solid #aaa;"></td>
         <td style="border-right:1px solid #aaa;border-top:1px solid #aaa;padding:5px 6px;text-align:right;font-size:10.5px;color:#333;">
@@ -845,7 +851,9 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
         ${
           isSplitGst
             ? `<th>CGST Rate</th><th>CGST Amt (₹)</th><th>SGST Rate</th><th>SGST Amt (₹)</th>`
-            : `<th>IGST Rate</th><th>IGST Amount (₹)</th>`
+            : isNoGst
+              ? `<th>GST Rate</th><th>GST Amount (₹)</th>`
+              : `<th>IGST Rate</th><th>IGST Amount (₹)</th>`
         }
         <th>Total Amount (₹)</th>
       </tr>
@@ -857,7 +865,7 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
         ${
           isSplitGst
             ? `<td>9%</td><td>${formatINR(cgstAmount)}</td><td>9%</td><td>${formatINR(sgstAmount)}</td>`
-            : `<td>${GST_RATE}%</td><td>${formatINR(igstAmount)}</td>`
+            : `<td>${isNoGst ? 0 : GST_RATE}%</td><td>${formatINR(igstAmount)}</td>`
         }
         <td><strong>${formatINR(totalAmount)}</strong></td>
       </tr>
@@ -881,7 +889,9 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
       <span>SGST @ 9%</span>
       <span>₹ ${formatINR(sgstAmount)}</span>
     </div>`
-        : `
+        : isNoGst
+          ? ""
+          : `
     <div class="amount-row">
       <span>IGST @ ${GST_RATE}%</span>
       <span>₹ ${formatINR(igstAmount)}</span>

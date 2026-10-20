@@ -38,7 +38,7 @@ const billSchema = new mongoose.Schema(
     ],
     gstType: {
       type: String,
-      enum: ["IGST", "CGST_SGST"],
+      enum: ["IGST", "CGST_SGST", "NO_GST"],
       default: "IGST",
     },
     billingDate: {
@@ -47,7 +47,6 @@ const billSchema = new mongoose.Schema(
     },
     renewalDate: {
       type: Date,
-      required: true,
     },
     amount: {
       type: Number,

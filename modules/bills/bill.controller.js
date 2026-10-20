@@ -122,11 +122,11 @@ const stopRenewalAlerts = async (req, res) => {
 
     // Check if alerts can be stopped
     const today = new Date();
-    const daysLeft = Math.ceil(
-      (new Date(bill.renewalDate) - today) / (1000 * 60 * 60 * 24),
-    );
+    const daysLeft = bill.renewalDate
+      ? Math.ceil((new Date(bill.renewalDate) - today) / (1000 * 60 * 60 * 24))
+      : null;
 
-    if (daysLeft > 7) {
+    if (daysLeft === null || daysLeft > 7) {
       return res.status(400).json({
         success: false,
         message: "Alerts can only be stopped when renewal is within 7 days",
@@ -174,11 +174,14 @@ const getRenewalAlertStatus = async (req, res) => {
     }
 
     const today = new Date();
-    const daysLeft = Math.ceil(
-      (new Date(bill.renewalDate) - today) / (1000 * 60 * 60 * 24),
-    );
+    const daysLeft = bill.renewalDate
+      ? Math.ceil((new Date(bill.renewalDate) - today) / (1000 * 60 * 60 * 24))
+      : null;
     const canStopAlerts =
-      daysLeft <= 7 && daysLeft >= 0 && !bill.renewalAlertsStopped;
+      daysLeft !== null &&
+      daysLeft <= 7 &&
+      daysLeft >= 0 &&
+      !bill.renewalAlertsStopped;
 
     res.json({
       success: true,

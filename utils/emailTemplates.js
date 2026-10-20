@@ -185,7 +185,7 @@ const getRenewalReminderEmail = (bill, client, daysLeft) => {
             </div>
             <div class="info-item">
               <span class="label">Renewal Date</span>
-              <span class="value">${new Date(bill.renewalDate).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}</span>
+              <span class="value">${bill.renewalDate ? new Date(bill.renewalDate).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }) : "—"}</span>
             </div>
             <div class="info-item">
               <span class="label">Amount</span>

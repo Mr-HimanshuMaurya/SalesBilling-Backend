@@ -63,7 +63,9 @@ const createBill = async (billData, user) => {
     throw new Error("Bill amount must be greater than 0");
   }
 
-  const gstType = billData.gstType === "CGST_SGST" ? "CGST_SGST" : "IGST";
+  const gstType = ["IGST", "CGST_SGST", "NO_GST"].includes(billData.gstType)
+    ? billData.gstType
+    : "IGST";
 
   const billNumber = await generateBillNumber();
   const isAdminDirect = user.role === ROLES.SUPERADMIN;
@@ -77,7 +79,7 @@ const createBill = async (billData, user) => {
     lineItems,
     gstType,
     billingDate: billData.billingDate,
-    renewalDate: billData.renewalDate,
+    renewalDate: billData.renewalDate || undefined,
     amount,
     status: isAdminDirect ? "approved" : "draft",
     adminDirectBill: isAdminDirect,
@@ -308,8 +310,15 @@ const updateBill = async (id, updateData, user) => {
     payload.amount = resolveTaxableAmount(payload, payload.lineItems);
   }
 
-  if (payload.gstType && !["IGST", "CGST_SGST"].includes(payload.gstType)) {
+  if (
+    payload.gstType &&
+    !["IGST", "CGST_SGST", "NO_GST"].includes(payload.gstType)
+  ) {
     throw new Error("Invalid GST type");
+  }
+
+  if (payload.renewalDate === "") {
+    payload.renewalDate = null;
   }
 
   if (payload.parentBillId !== undefined) {
