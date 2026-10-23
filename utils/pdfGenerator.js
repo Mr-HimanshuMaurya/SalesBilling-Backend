@@ -968,7 +968,7 @@ const generatePdf = async (bill, client, pdfOptions = {}) => {
 try {
   browser = await puppeteer.launch({
     headless: "new",
-    executablePath: '/usr/bin/google-chrome-stable', 
+    executablePath: '/root/.cache/puppeteer/chrome/linux-150.0.7871.24/chrome-linux64/chrome',
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
