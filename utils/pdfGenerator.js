@@ -2,6 +2,31 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 
+let browserInstance = null;
+
+async function getBrowser() {
+  if (browserInstance && browserInstance.connected) {
+    return browserInstance;
+  }
+  
+  browserInstance = await puppeteer.launch({
+    headless: "new",
+    executablePath: '/root/.cache/puppeteer/chrome/linux-150.0.7871.24/chrome-linux64/chrome',
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-zygote",
+      "--single-process",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins",
+    ],
+  });
+  
+  return browserInstance;
+}
+
 const getLogoBase64 = () => {
   try {
     const logoPath = path.join(__dirname, "../public/aasthalogo.png");
@@ -962,24 +987,12 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
 const generatePdf = async (bill, client, pdfOptions = {}) => {
   console.log(`Generating PDF for bill: ${bill.billNumber}`);
 
-  let browser = null;
   let page = null;
 
-try {
-  browser = await puppeteer.launch({
-    headless: "new",
-    executablePath: '/root/.cache/puppeteer/chrome/linux-150.0.7871.24/chrome-linux64/chrome',
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-zygote",
-      "--single-process",
-      "--disable-web-security",
-      "--disable-features=IsolateOrigins",
-    ],
-  });
+  try {
+    // 👇 Naya browser nahi banega, pehle se khula browser use hoga
+    const browser = await getBrowser(); 
+    
     page = await browser.newPage();
 
     page.setDefaultTimeout(30000);
@@ -991,24 +1004,13 @@ try {
       deviceScaleFactor: 1,
     });
 
-    // Browser/page error logging
-    page.on("error", (error) => {
-      console.error("Puppeteer page crashed:", error.message);
-    });
-
-    page.on("pageerror", (error) => {
-      console.error("HTML JavaScript error:", error.message);
-    });
-
+    page.on("error", (error) => console.error("Puppeteer page crashed:", error.message));
+    page.on("pageerror", (error) => console.error("HTML JavaScript error:", error.message));
     page.on("console", (message) => {
-      if (message.type() === "error") {
-        console.error("Browser console error:", message.text());
-      }
+      if (message.type() === "error") console.error("Browser console error:", message.text());
     });
 
-    // Generate invoice HTML
     const html = generateHTML(bill, client, pdfOptions);
-
     console.log("Setting HTML content...");
 
     await page.setContent(html, {
@@ -1016,23 +1018,15 @@ try {
       timeout: 30000,
     });
 
-    // Wait for fonts
     await page.evaluate(async () => {
-      if (document.fonts) {
-        await document.fonts.ready;
-      }
+      if (document.fonts) await document.fonts.ready;
     });
 
-    // Wait for invoice images (logo + seal) to load or fail
     await page.evaluate(async () => {
       const images = Array.from(document.images);
-
       await Promise.all(
         images.map((img) => {
-          if (img.complete) {
-            return Promise.resolve();
-          }
-
+          if (img.complete) return Promise.resolve();
           return new Promise((resolve) => {
             img.addEventListener("load", resolve, { once: true });
             img.addEventListener("error", resolve, { once: true });
@@ -1043,69 +1037,39 @@ try {
 
     console.log("HTML ready. Generating PDF...");
 
-    // Generate PDF buffer
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
       preferCSSPageSize: true,
-      margin: {
-        top: "20px",
-        bottom: "20px",
-        left: "20px",
-        right: "20px",
-      },
+      margin: { top: "20px", bottom: "20px", left: "20px", right: "20px" },
       displayHeaderFooter: false,
       landscape: false,
     });
 
-    console.log(
-      `PDF generated successfully. Size: ${(pdfBuffer.length / 1024).toFixed(
-        2,
-      )} KB`,
-    );
+    console.log(`PDF generated successfully. Size: ${(pdfBuffer.length / 1024).toFixed(2)} KB`);
 
-    // Save a debug copy safely
+    // Debug save logic waisa hi rahega
     try {
       const debugDir = path.join(__dirname, "debug");
-
       fs.mkdirSync(debugDir, { recursive: true });
-
-      // Replace characters that are invalid in Windows filenames
-      const safeBillNumber = String(bill.billNumber).replace(
-        /[<>:"/\\|?*\x00-\x1F]/g,
-        "_",
-      );
-
+      const safeBillNumber = String(bill.billNumber).replace(/[<>:"/\\|?*\x00-\x1F]/g, "_");
       const debugPath = path.join(debugDir, `${safeBillNumber}.pdf`);
-
       fs.writeFileSync(debugPath, pdfBuffer);
-
-      console.log(`Debug PDF saved: ${debugPath}`);
     } catch (debugError) {
-      // Debug saving should not prevent the actual PDF download
       console.error("Could not save debug PDF:", debugError.message);
     }
 
-    // Return the PDF for download
     return Buffer.from(pdfBuffer);
   } catch (error) {
-    console.error("PDF generation failed:", {
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-      browserConnected: browser?.connected,
-      pageClosed: page?.isClosed(),
-    });
-
+    console.error("PDF generation failed:", { message: error.message, name: error.name });
     throw new Error(`Failed to generate PDF: ${error.message}`);
   } finally {
-    // Always close the browser
-    if (browser) {
+    // 👇 SIRF PAGE CLOSE HOGA, BROWSER NAHI
+    if (page) {
       try {
-        await browser.close();
-        console.log("Puppeteer browser closed.");
+        await page.close();
       } catch (closeError) {
-        console.error("Error closing Puppeteer browser:", closeError.message);
+        console.error("Error closing page:", closeError.message);
       }
     }
   }
