@@ -965,6 +965,7 @@ const generatePdf = async (bill, client, pdfOptions = {}) => {
   let browser = null;
   let page = null;
 
+try {
   browser = await puppeteer.launch({
     headless: "new",
     executablePath: '/usr/bin/google-chrome-stable', 
