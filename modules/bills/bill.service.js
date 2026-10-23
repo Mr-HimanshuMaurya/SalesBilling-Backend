@@ -124,8 +124,13 @@ const getBills = async (query, user) => {
     billingStartDate,
     billingEndDate,
     salesPerson,
+    client,
   } = query;
   const filter = {};
+
+    if (client) {
+    filter.client = client;
+  }
 
   if (user.role === ROLES.SALES) {
     filter.createdBy = user.id;
