@@ -965,19 +965,20 @@ const generatePdf = async (bill, client, pdfOptions = {}) => {
   let browser = null;
   let page = null;
 
-  try {
-    // Launch Puppeteer
-    browser = await puppeteer.launch({
-      headless: true,
-      timeout: 30000,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
-
+  browser = await puppeteer.launch({
+    headless: "new",
+    executablePath: '/usr/bin/google-chrome-stable', 
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-zygote",
+      "--single-process",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins",
+    ],
+  });
     page = await browser.newPage();
 
     page.setDefaultTimeout(30000);
