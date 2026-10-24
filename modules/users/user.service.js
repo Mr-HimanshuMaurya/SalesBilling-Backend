@@ -55,6 +55,23 @@ const updateUser = async (id, updateData) => {
   return updatedUser;
 };
 
+const changeUserPassword = async (id, newPassword) => {
+  const user = await User.findById(id);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  if (!newPassword || newPassword.trim().length < 6) {
+    throw new Error('Password must be at least 6 characters long');
+  }
+
+  // set password and save so the pre-save hook hashes it
+  user.password = newPassword.trim();
+  await user.save();
+
+  return user;
+};
+
 const deleteUser = async (id, currentUserId) => {
   if (id === currentUserId) {
     throw new Error('Superadmin cannot delete themselves');
@@ -80,4 +97,4 @@ const toggleUserStatus = async (id) => {
   return user;
 };
 
-module.exports = { createUser, getUsers, updateUser, deleteUser, toggleUserStatus };
+module.exports = { createUser, getUsers, updateUser, changeUserPassword, deleteUser, toggleUserStatus };
