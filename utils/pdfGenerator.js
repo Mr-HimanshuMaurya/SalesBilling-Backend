@@ -6,12 +6,11 @@ let browserInstance = null;
 let launchPromise = null;
 
 async function getBrowser() {
-  // Browser alive aur responsive hai to wahi use karo
-  if (browserInstance && browserInstance.isConnected()) {
+  // isConnected() nahi, .connected property use karo
+  if (browserInstance && browserInstance.connected) {
     return browserInstance;
   }
 
-  // Parallel requests par multiple launch na ho
   if (launchPromise) return launchPromise;
 
   launchPromise = puppeteer
