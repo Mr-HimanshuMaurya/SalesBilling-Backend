@@ -3,47 +3,76 @@ const fs = require("fs");
 const path = require("path");
 
 let browserInstance = null;
+let launchPromise = null;
 
 async function getBrowser() {
-  if (browserInstance && browserInstance.connected) {
+  // Browser alive aur responsive hai to wahi use karo
+  if (browserInstance && browserInstance.isConnected()) {
     return browserInstance;
   }
-  
-  browserInstance = await puppeteer.launch({
-    headless: "new",
-    executablePath: '/root/.cache/puppeteer/chrome/linux-150.0.7871.24/chrome-linux64/chrome',
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-zygote",
-      "--single-process",
-      "--disable-web-security",
-      "--disable-features=IsolateOrigins",
-    ],
-  });
-  
-  return browserInstance;
+
+  // Parallel requests par multiple launch na ho
+  if (launchPromise) return launchPromise;
+
+  launchPromise = puppeteer
+    .launch({
+      headless: "new",
+      executablePath:
+        "/root/.cache/puppeteer/chrome/linux-150.0.7871.24/chrome-linux64/chrome",
+      protocolTimeout: 60000,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--font-render-hinting=none",
+      ],
+    })
+    .then((b) => {
+      browserInstance = b;
+      b.on("disconnected", () => {
+        browserInstance = null;
+      });
+      launchPromise = null;
+      return b;
+    })
+    .catch((err) => {
+      launchPromise = null;
+      throw err;
+    });
+
+  return launchPromise;
 }
 
+let cachedLogo = null;
+let cachedSeal = null;
+
 const getLogoBase64 = () => {
+  if (cachedLogo !== null) return cachedLogo;
   try {
     const logoPath = path.join(__dirname, "../public/aasthalogo.png");
-
-    if (fs.existsSync(logoPath)) {
-      const logoBuffer = fs.readFileSync(logoPath);
-      const base64Logo = logoBuffer.toString("base64");
-
-      return `data:image/png;base64,${base64Logo}`;
-    } else {
-      console.warn("Logo file not found at:", logoPath);
-      return "";
-    }
-  } catch (error) {
-    console.error("Error reading logo:", error);
-    return "";
+    cachedLogo = fs.existsSync(logoPath)
+      ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
+      : "";
+  } catch (e) {
+    cachedLogo = "";
   }
+  return cachedLogo;
+};
+
+const getSealBase64 = () => {
+  if (cachedSeal !== null) return cachedSeal;
+  try {
+    const sealPath = path.join(__dirname, "../public/Aasthaseal.png");
+    cachedSeal = fs.existsSync(sealPath)
+      ? `data:image/png;base64,${fs.readFileSync(sealPath).toString("base64")}`
+      : "";
+  } catch (e) {
+    cachedSeal = "";
+  }
+  return cachedSeal;
 };
 
 // ---------- Seal / Stamp ----------
@@ -1013,10 +1042,10 @@ const generatePdf = async (bill, client, pdfOptions = {}) => {
     const html = generateHTML(bill, client, pdfOptions);
     console.log("Setting HTML content...");
 
-    await page.setContent(html, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
+   await page.setContent(html, {
+  waitUntil: "load",
+  timeout: 60000,
+});
 
     await page.evaluate(async () => {
       if (document.fonts) await document.fonts.ready;
