@@ -28,6 +28,18 @@ const updateUser = async (req, res) => {
   }
 };
 
+const changePassword = async (req, res) => {
+  try {
+    const user = await userService.changeUserPassword(
+      req.params.id,
+      req.body.newPassword,
+    );
+    return successResponse(res, user, 'Password changed successfully');
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
 const deleteUser = async (req, res) => {
   try {
     const result = await userService.deleteUser(req.params.id, req.user.id);
@@ -46,4 +58,4 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getUsers, updateUser, deleteUser, toggleUserStatus };
+module.exports = { createUser, getUsers, updateUser, changePassword, deleteUser, toggleUserStatus };
