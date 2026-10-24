@@ -75,24 +75,6 @@ const getSealBase64 = () => {
   return cachedSeal;
 };
 
-// ---------- Seal / Stamp ----------
-const getSealBase64 = () => {
-  try {
-    const sealPath = path.join(__dirname, "../public/Aasthaseal.png");
-
-    if (fs.existsSync(sealPath)) {
-      const sealBuffer = fs.readFileSync(sealPath);
-      return `data:image/png;base64,${sealBuffer.toString("base64")}`;
-    } else {
-      console.warn("Seal file not found at:", sealPath);
-      return "";
-    }
-  } catch (error) {
-    console.error("Error reading seal:", error);
-    return "";
-  }
-};
-
 const companyInfo = {
   companyName: "ASHATHA ENTERPRISES",
   addressLine1: "B-5 Jyoti building,66 behind icici bank",
