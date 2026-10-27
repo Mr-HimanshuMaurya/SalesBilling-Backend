@@ -638,7 +638,7 @@ const generateHTML = (bill, client, pdfOptions = {}) => {
     />
     
 
-    <div class="invoice-title"> ${isProforma ? "Proforma Invoice" : "Tax Invoice"}</div>
+    <div class="invoice-title"> ${isProforma ? "Proforma Invoice" : isNoGst ? "Invoice" : "Tax Invoice"}</div>
   </div>
 
   <!-- Top grid: Company info + Invoice details -->
